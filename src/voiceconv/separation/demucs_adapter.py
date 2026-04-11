@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import tempfile
 from pathlib import Path
 
 import numpy as np
@@ -22,10 +21,24 @@ class DemucsSeparator(SeparatorBackend):
     We recombine drums+bass+other as the instrumental track.
     """
 
-    def __init__(self, model_name: str = "htdemucs", device: str = "cpu"):
+    def __init__(self, model_name: str = "htdemucs", device: str | None = None):
         self._model_name = model_name
-        self._device = device
+        self._device = device or self._detect_device()
         self._model = None
+
+    @staticmethod
+    def _detect_device() -> str:
+        """Pick the best available device (CUDA > MPS > CPU)."""
+        try:
+            import torch
+
+            if torch.cuda.is_available():
+                return "cuda"
+            if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+                return "mps"
+        except ImportError:
+            pass
+        return "cpu"
 
     @property
     def name(self) -> str:

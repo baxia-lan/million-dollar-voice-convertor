@@ -1,5 +1,7 @@
 """Tests for GUI components (headless-safe)."""
 
+import tempfile
+
 import pytest
 
 from voiceconv.core.types import AudioFormat, ConversionJob, ProvenanceRecord
@@ -14,10 +16,11 @@ class TestGUIImports:
         assert ConversionWorker is not None
 
     def test_types_used_by_gui(self):
+        tmp = Path(tempfile.gettempdir())
         job = ConversionJob(
-            song_path=Path("/tmp/test.wav"),
-            reference_path=Path("/tmp/ref.wav"),
-            output_dir=Path("/tmp/out"),
+            song_path=tmp / "test.wav",
+            reference_path=tmp / "ref.wav",
+            output_dir=tmp / "out",
             output_format=AudioFormat.WAV,
             provenance=ProvenanceRecord(user_consent=True),
         )

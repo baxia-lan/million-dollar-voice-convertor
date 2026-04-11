@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import platform
 import subprocess
 import sys
 from pathlib import Path
@@ -39,21 +40,43 @@ def build():
         "--hidden-import=pyworld",
         "--hidden-import=scipy.signal",
         "--hidden-import=scipy.fft",
+        "--hidden-import=torch",
+        "--hidden-import=torchaudio",
+        "--hidden-import=demucs.api",
         # Collect all data files for libraries that need them
         "--collect-data=resemblyzer",
         "--noconfirm",
         "--clean",
-        str(ENTRY),
     ]
 
-    print(f"Building VoiceConv...")
+    # Platform-specific options
+    if sys.platform == "darwin":
+        cmd.append("--osx-bundle-identifier=com.voiceconv.app")
+        icon_path = ROOT / "src" / "voiceconv" / "gui" / "resources" / "icon.icns"
+        if icon_path.exists():
+            cmd.append(f"--icon={icon_path}")
+        # Build universal binary on Apple Silicon when possible
+        if platform.machine() == "arm64":
+            cmd.append("--target-arch=arm64")
+    elif sys.platform == "win32":
+        icon_path = ROOT / "src" / "voiceconv" / "gui" / "resources" / "icon.ico"
+        if icon_path.exists():
+            cmd.append(f"--icon={icon_path}")
+
+    cmd.append(str(ENTRY))
+
+    print("Building VoiceConv...")
+    print(f"  Platform: {sys.platform} ({platform.machine()})")
     print(f"  Entry point: {ENTRY}")
     print(f"  Output: {DIST}")
     print()
 
     result = subprocess.run(cmd, cwd=str(ROOT))
     if result.returncode == 0:
-        print(f"\nBuild successful! Output at: {DIST / 'VoiceConv'}")
+        out = DIST / "VoiceConv"
+        if sys.platform == "darwin":
+            out = DIST / "VoiceConv.app"
+        print(f"\nBuild successful! Output at: {out}")
     else:
         print(f"\nBuild failed (exit code {result.returncode})", file=sys.stderr)
         sys.exit(result.returncode)

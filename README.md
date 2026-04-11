@@ -17,6 +17,22 @@
 - Python 3.11+
 - (Optional) FFmpeg for MP3/M4A support
 
+#### macOS
+
+```bash
+# Install Xcode Command Line Tools (needed for pyworld C extension)
+xcode-select --install
+
+# Install system dependencies via Homebrew
+brew install python@3.11 libsndfile ffmpeg
+```
+
+#### Linux (Debian/Ubuntu)
+
+```bash
+sudo apt install python3.11 python3.11-venv libsndfile1 ffmpeg
+```
+
 ### Install
 
 ```bash

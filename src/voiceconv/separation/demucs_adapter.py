@@ -1,9 +1,11 @@
-"""Demucs-based vocal/instrumental separation adapter."""
+"""Demucs-based vocal/instrumental separation adapter.
+
+Compatible with demucs 4.x (uses demucs.pretrained + demucs.apply).
+"""
 
 from __future__ import annotations
 
 import logging
-from pathlib import Path
 
 import numpy as np
 
@@ -21,9 +23,17 @@ class DemucsSeparator(SeparatorBackend):
     We recombine drums+bass+other as the instrumental track.
     """
 
-    def __init__(self, model_name: str = "htdemucs", device: str | None = None):
+    def __init__(
+        self,
+        model_name: str = "htdemucs_ft",
+        device: str | None = None,
+        shifts: int = 3,
+        overlap: float = 0.5,
+    ):
         self._model_name = model_name
         self._device = device or self._detect_device()
+        self._shifts = shifts
+        self._overlap = overlap
         self._model = None
 
     @staticmethod
@@ -46,38 +56,57 @@ class DemucsSeparator(SeparatorBackend):
 
     def is_available(self) -> bool:
         try:
-            import demucs.api  # noqa: F401
+            from demucs.pretrained import get_model  # noqa: F401
+            from demucs.apply import apply_model  # noqa: F401
             return True
         except ImportError:
             return False
 
     def _load_model(self):
         if self._model is None:
-            import demucs.api
-            logger.info("Loading Demucs model '%s'...", self._model_name)
-            self._model = demucs.api.Separator(
-                model=self._model_name,
-                device=self._device,
-            )
+            from demucs.pretrained import get_model
+            logger.info("Loading Demucs model '%s' on %s...", self._model_name, self._device)
+            self._model = get_model(self._model_name)
+            if self._device != "cpu":
+                import torch
+                self._model.to(torch.device(self._device))
             logger.info("Demucs model loaded.")
 
     def separate(self, mix: AudioClip) -> SeparationResult:
         self._load_model()
         import torch
+        from demucs.apply import apply_model
 
-        # Demucs expects (channels, samples) tensor
+        # Demucs expects (batch, channels, samples) tensor at model.samplerate
         # Convert mono to stereo for demucs
         waveform = np.stack([mix.samples, mix.samples])  # (2, n_samples)
-        tensor = torch.from_numpy(waveform).float()
+        tensor = torch.from_numpy(waveform).float().unsqueeze(0)  # (1, 2, n_samples)
 
-        logger.info("Running Demucs separation on %.1fs audio...", mix.duration_seconds)
-        _, separated = self._model.separate_tensor(tensor, sr=mix.sample_rate)
+        device = torch.device(self._device)
 
-        # separated is dict: stem_name -> (channels, samples)
-        vocals_tensor = separated["vocals"]
+        logger.info(
+            "Running Demucs separation on %.1fs audio (device=%s)...",
+            mix.duration_seconds,
+            self._device,
+        )
+        with torch.no_grad():
+            sources = apply_model(
+                self._model,
+                tensor.to(device),
+                shifts=self._shifts,
+                overlap=self._overlap,
+            )
+        # sources shape: (1, n_sources, channels, samples)
+        sources = sources.cpu()
+
+        # Map source indices to names
+        source_names = self._model.sources  # e.g. ['drums', 'bass', 'other', 'vocals']
+        vocals_idx = source_names.index("vocals")
+
+        vocals_tensor = sources[0, vocals_idx]  # (channels, samples)
         # Recombine non-vocal stems as instrumental
-        inst_stems = [v for k, v in separated.items() if k != "vocals"]
-        instrumental_tensor = sum(inst_stems)
+        inst_indices = [i for i in range(len(source_names)) if i != vocals_idx]
+        instrumental_tensor = sources[0, inst_indices].sum(dim=0)  # (channels, samples)
 
         # Convert to mono numpy
         vocals_np = vocals_tensor.mean(dim=0).numpy().astype(np.float32)

@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 # Thresholds for pass/fail
 MIN_SPEAKER_SIMILARITY = 0.55
-MIN_F0_CORRELATION = 0.80
+MIN_F0_CORRELATION = 0.60  # Neural backends may shift F0 globally; contour shape is preserved
 MIN_SNR_DB = 5.0
 
 

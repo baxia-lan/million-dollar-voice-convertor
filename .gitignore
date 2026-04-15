@@ -10,3 +10,20 @@ build/
 venv/
 *.so
 *.dylib
+.DS_Store
+
+# Large training/model artifacts (recreate on new machine, see HANDOFF.md)
+sovits_workspace/
+checkpoints/
+training_data/
+test_output_solo/
+test_output_final/
+*.pth
+*.index
+*.onnx
+
+# Audio files (keep only in scripts, not bulk data)
+*.wav
+*.m4a
+*.mp3
+*.flac

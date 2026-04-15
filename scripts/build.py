@@ -42,7 +42,10 @@ def build():
         "--hidden-import=scipy.fft",
         "--hidden-import=torch",
         "--hidden-import=torchaudio",
-        "--hidden-import=demucs.api",
+        "--hidden-import=demucs.pretrained",
+        "--hidden-import=demucs.apply",
+        "--hidden-import=openvoice_cli",
+        "--hidden-import=openvoice_cli.api",
         # Collect all data files for libraries that need them
         "--collect-data=resemblyzer",
         "--noconfirm",

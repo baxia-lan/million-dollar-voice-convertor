@@ -15,6 +15,10 @@ torchaudio>=2.0
 # Audio format support
 pydub>=0.25
 
+# Neural voice conversion
+openvoice-cli>=0.0.5
+seed-vc>=0.4
+
 # Dev / Test
 pytest>=7.0
 pytest-qt>=4.2

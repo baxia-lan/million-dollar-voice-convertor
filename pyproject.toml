@@ -21,6 +21,8 @@ dependencies = [
     "torch>=2.0",
     "torchaudio>=2.0",
     "pydub>=0.25",
+    "openvoice-cli>=0.0.5",
+    "seed-vc>=0.4",
 ]
 
 [project.optional-dependencies]
